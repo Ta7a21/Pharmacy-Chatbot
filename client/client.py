@@ -2,7 +2,7 @@ import socket
 
 HEADER = 64
 PORT = 5050
-SERVER = "192.168.100.54"
+SERVER = "192.168.1.15"
 ADDR = (SERVER ,PORT)
 FORMAT = 'utf_8'
 DISSCONECT_MSG = "Disconnected!"

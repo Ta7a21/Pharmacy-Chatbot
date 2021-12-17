@@ -17,14 +17,25 @@ def handleClient(connection , address):
 
     connected = True
     while connected:
-        msg_length = connection.recv(HEADER).decode(FORMAT) #wait untill sth is sent over the socket (we 'll determine how many bites we will accept)
-        if msg_length:
-            msg_length =int(msg_length)
-            msg =connection.recv(msg_length).decode(FORMAT) # the actual msg
-            if(msg == DISSCONECT_MSG):
-                connected =False
-            print(f"[{address}] {msg}")
-            connection.send("Msg Received Porperly!".encode(FORMAT))
+        try:
+             connection.settimeout(20.0) #timeouts 20 sec
+             msg_length = connection.recv(HEADER).decode(FORMAT) #wait untill sth is sent over the socket (we 'll determine how many bites we will accept)
+             connection.settimeout(None)
+             if msg_length:
+                msg_length =int(msg_length)
+                msg =connection.recv(msg_length).decode(FORMAT) # the actual msg
+                if(msg == DISSCONECT_MSG):
+                    print(f"[DISCONNECTED] {address} has disconnected")
+                    connected =False
+                    continue
+                print(f"[{address}] {msg}")
+                connection.send("Msg Received Porperly!".encode(FORMAT))
+        except socket.timeout as e:
+            print("[TIME OUT] Timed out after 20 seconds")
+            connection.send("Connection Timed Out!".encode(FORMAT))
+            print(f"[DISCONNECTED] {address} has disconnected")
+            connected = False
+
 
     connection.close()
 
