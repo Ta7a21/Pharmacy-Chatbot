@@ -6,13 +6,20 @@ import tkinter
 def receive():
     while True:
         try:
-            msg = client_socket.recv(2048).decode(FORMAT)
-            msg_list.insert(tkinter.END, msg)
-            if msg == "Connection Timed Out!" or msg == "Thank you!":
-                client_socket.close()
-                top.quit()
+            msg_length = client_socket.recv(HEADER).decode(
+                FORMAT
+            )  # wait untill sth is sent over the socket (we 'll determine how many bites we will accept)
+            client_socket.settimeout(None)
+            if msg_length:
+                msg_length = int(msg_length)
+                msg = client_socket.recv(msg_length).decode(FORMAT)
+            # msg = client_socket.recv(4096).decode(FORMAT)
+            
+                msg_list.insert(tkinter.END, msg)
+                if msg == "Connection Timed Out!" or msg == "Thank you!":
+                    client_socket.close()
+                    top.quit()
         except OSError:
-            print(1)
             break
 
 
@@ -30,14 +37,10 @@ def send(event=None):
 
     msg_list.insert(tkinter.END, PREFIX + msg)
 
-    if msg == "{quit}":
-        client_socket.close()
-        top.quit()
-
 
 def on_closing(event=None):
-    my_msg.set("{quit}")
-    send()
+    client_socket.close()
+    top.quit()
 
 
 top = tkinter.Tk()
@@ -49,7 +52,7 @@ my_msg.set("")
 scrollbar = tkinter.Scrollbar(messages_frame)
 
 msg_list = tkinter.Listbox(
-    messages_frame, height=15, width=50, yscrollcommand=scrollbar.set
+    messages_frame, height=15, width=100, yscrollcommand=scrollbar.set
 )
 scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
 msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH)
