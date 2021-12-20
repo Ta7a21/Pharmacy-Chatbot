@@ -1,29 +1,79 @@
-import socket
+from socket import AF_INET, socket, SOCK_STREAM
+from threading import Thread
+import tkinter
 
-HEADER = 64
-PORT = 5050
-SERVER = "192.168.1.15"
-ADDR = (SERVER ,PORT)
-FORMAT = 'utf_8'
-DISSCONECT_MSG = "Disconnected!"
 
-client = socket.socket(socket.AF_INET ,socket.SOCK_STREAM) #AF :ip v4 sock_stream: TCP
-client.connect(ADDR)
+def receive():
+    while True:
+        try:
+            msg = client_socket.recv(2048).decode(FORMAT)
+            msg_list.insert(tkinter.END, msg)
+            if msg == "Connection Timed Out!" or msg == "Thank you!":
+                client_socket.close()
+                top.quit()
+        except OSError:
+            print(1)
+            break
 
-def send(msg):
-    message =msg.encode(FORMAT)
+
+def send(event=None):
+    msg = my_msg.get()
+    my_msg.set("")
+    message = msg.encode(FORMAT)
+
     msg_len = len(message)
     send_len = str(msg_len).encode(FORMAT)
-    send_len += b' ' * (HEADER-len(send_len))
+    send_len += b" " * (HEADER - len(send_len))
 
-    client.send(send_len)
-    client.send(message)
-    print(client.recv(2048).decode(FORMAT))
+    client_socket.send(send_len)
+    client_socket.send(message)
 
-send("Hello world!")
-input()
-send("Hello Everyone!")
-input()
-send("Hello Sedky!")
+    msg_list.insert(tkinter.END, PREFIX + msg)
 
-send("Disconnected!")
+    if msg == "{quit}":
+        client_socket.close()
+        top.quit()
+
+
+def on_closing(event=None):
+    my_msg.set("{quit}")
+    send()
+
+
+top = tkinter.Tk()
+top.title("Pharmacy Chatbot")
+
+messages_frame = tkinter.Frame(top)
+my_msg = tkinter.StringVar()
+my_msg.set("")
+scrollbar = tkinter.Scrollbar(messages_frame)
+
+msg_list = tkinter.Listbox(
+    messages_frame, height=15, width=50, yscrollcommand=scrollbar.set
+)
+scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH)
+msg_list.pack()
+messages_frame.pack()
+
+entry_field = tkinter.Entry(top, textvariable=my_msg)
+entry_field.bind("<Return>", send)
+entry_field.pack()
+send_button = tkinter.Button(top, text="Send", command=send)
+send_button.pack()
+
+top.protocol("WM_DELETE_WINDOW", on_closing)
+
+HOST = "192.168.0.105"
+PORT = 5050
+HEADER = 64
+PREFIX = "User: "
+FORMAT = "utf_8"
+ADDR = (HOST, PORT)
+
+client_socket = socket(AF_INET, SOCK_STREAM)
+client_socket.connect(ADDR)
+
+receive_thread = Thread(target=receive)
+receive_thread.start()
+tkinter.mainloop()
