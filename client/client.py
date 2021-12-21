@@ -1,6 +1,7 @@
 from socket import AF_INET,socket, SOCK_STREAM
 from threading import Thread
 import tkinter
+from tkinter import font
 
 
 def receive():
@@ -15,7 +16,7 @@ def receive():
                 msg = client_socket.recv(msg_length).decode(FORMAT)
             
                 msg_list.insert(tkinter.END, msg)
-                msg_list.yview(tkinter.END) 
+                msg_list.yview(tkinter.END)
                 if msg == "Connection Timed Out!":
                     client_socket.close()
                     top.quit()
@@ -37,6 +38,7 @@ def send(event=None):
 
     msg_list.insert(tkinter.END, PREFIX + msg)
     msg_list.yview(tkinter.END) 
+    msg_list.itemconfig(tkinter.END, foreground="blue")
 
 
 def on_closing(event=None):
@@ -53,18 +55,18 @@ my_msg.set("")
 scrollbar = tkinter.Scrollbar(messages_frame)
 
 msg_list = tkinter.Listbox(
-    messages_frame, height=15, width=100, yscrollcommand=scrollbar.set
+    messages_frame, height=15, width=100, yscrollcommand=scrollbar.set,font=font.Font(size=18)
 )
 scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
-msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH)
+msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH,padx=10,pady=10)
 msg_list.pack()
 messages_frame.pack()
 
-entry_field = tkinter.Entry(top, textvariable=my_msg)
+entry_field = tkinter.Entry(top, textvariable=my_msg,font=font.Font(size=14))
 entry_field.bind("<Return>", send)
-entry_field.pack()
-send_button = tkinter.Button(top, text="Send", command=send)
-send_button.pack()
+entry_field.pack(padx=10,pady=10)
+send_button = tkinter.Button(top, text="Send", command=send,font=font.Font(size=14))
+send_button.pack(padx=10,pady=10)
 
 top.protocol("WM_DELETE_WINDOW", on_closing)
 
