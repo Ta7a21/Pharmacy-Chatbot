@@ -53,5 +53,3 @@ $python client/client.py
 ![image](https://media.discordapp.net/attachments/721283495909130290/922851740397756446/unknown.png?width=960&height=410)
 ![image](https://media.discordapp.net/attachments/721283495909130290/922852417341620256/unknown.png?width=1004&height=431)
 ![image](https://media.discordapp.net/attachments/721283495909130290/922852711295225886/unknown.png?width=1025&height=423)
-![image](https://media.discordapp.net/attachments/721283495909130290/922852828563767316/unknown.png?width=511&height=161)
-![image](https://media.discordapp.net/attachments/721283495909130290/922852901150416896/unknown.png?width=320&height=121)
