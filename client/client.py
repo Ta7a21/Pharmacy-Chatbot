@@ -1,4 +1,5 @@
 from socket import AF_INET, socket, SOCK_STREAM
+from cryptography.fernet import Fernet
 from threading import Thread
 import tkinter
 from tkinter import font
@@ -43,7 +44,7 @@ def sendResponse(event=None):
 
 
 def sendMessage(message):
-    message = message.encode(FORMAT)
+    message = encryptMessage(message)
 
     messageLength = len(message)
     send_len = str(messageLength).encode(FORMAT)
@@ -52,6 +53,16 @@ def sendMessage(message):
     client_socket.send(send_len)
     client_socket.send(message)
 
+def encryptMessage(message):
+    key = loadKey()
+    message = message.encode(FORMAT)
+    f = Fernet(key)
+    encryptedMessage = f.encrypt(message)
+
+    return encryptedMessage
+
+def loadKey():
+    return open("key/secret.key", "rb").read()
 
 def close(event=None):
     client_socket.close()

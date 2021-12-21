@@ -31,7 +31,7 @@ USE `pharmacy`;
 --
 
 CREATE TABLE `clients` (
-  `phoneNumber` varchar(15) COLLATE utf8mb4_general_ci NOT NULL,
+  `phoneNumber` varchar(250) COLLATE utf8mb4_general_ci NOT NULL,
   `address` varchar(80) COLLATE utf8mb4_general_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

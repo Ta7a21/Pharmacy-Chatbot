@@ -1,4 +1,5 @@
 from socket import AF_INET, socket, SOCK_STREAM, timeout
+from cryptography.fernet import Fernet
 import threading
 import mysql.connector
 import time
@@ -99,11 +100,20 @@ def receiveMessage(connection):
     connection.settimeout(None)
 
     messageLength = int(messageLength)
-    message = connection.recv(messageLength).decode(FORMAT)
-
+    message = connection.recv(messageLength)
+    message = decryptMessage(message)
     # Use title method to unify strings case
     return message.title()
 
+def decryptMessage(encrypted_message):
+    key = loadKey()
+    f = Fernet(key)
+    decryptedMessage = f.decrypt(encrypted_message).decode(FORMAT)
+    
+    return decryptedMessage
+
+def loadKey():
+    return open("key/secret.key", "rb").read()
 
 def getCategories(connection):
     sendMessage(
@@ -265,7 +275,6 @@ def getPhoneNumber(connection):
 
     return clientPhoneNumber
 
-
 def handleAddress(connection, clientPhoneNumber):
     mycursor.execute(
         "SELECT address FROM clients WHERE phoneNumber = %s", (clientPhoneNumber,)
@@ -280,6 +289,7 @@ def handleAddress(connection, clientPhoneNumber):
 
 
 def insertAddress(connection, clientPhoneNumber):
+    print(clientPhoneNumber)
     sendMessage(connection, PREFIX + "Please type your address")
     clientAddress = receiveMessage(connection)
     mycursor.execute(
