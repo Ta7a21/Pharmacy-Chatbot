@@ -28,6 +28,7 @@ $cd Pharmacy-Chatbot
 3. **_Install dependencies_**
 ```sh
 $pip install mysql-connector-python
+$pip install cryptography
 ```
 * Install [AMPPS](https://ampps.com/downloads/) or [XAMPP](https://www.apachefriends.org/index.html) to run [phpMyAdmin](https://www.phpmyadmin.net/)
 
