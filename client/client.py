@@ -1,47 +1,59 @@
-from socket import AF_INET,socket, SOCK_STREAM
+from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 import tkinter
 from tkinter import font
 
 
-def receive():
+def receiveResponse():
     while True:
         try:
-            msg_length = client_socket.recv(HEADER).decode(
-                FORMAT
-            )
-            client_socket.settimeout(None)
-            if msg_length:
-                msg_length = int(msg_length)
-                msg = client_socket.recv(msg_length).decode(FORMAT)
-            
-                msg_list.insert(tkinter.END, msg)
-                msg_list.yview(tkinter.END)
-                if msg == "Connection Timed Out!":
-                    client_socket.close()
-                    top.quit()
+            message = receiveMessage()
+
+            msg_list.insert(tkinter.END, message)
+
+            # Scroll to the end of the list
+            msg_list.yview(tkinter.END)
+            if message == "Connection Timed Out!":
+                close()
         except OSError:
             break
 
 
-def send(event=None):
-    msg = my_msg.get()
-    my_msg.set("")
-    message = msg.encode(FORMAT)
+def receiveMessage():
+    messageLength = client_socket.recv(BUFFERSIZE).decode(FORMAT)
 
-    msg_len = len(message)
-    send_len = str(msg_len).encode(FORMAT)
-    send_len += b" " * (HEADER - len(send_len))
+    messageLength = int(messageLength)
+    message = client_socket.recv(messageLength).decode(FORMAT)
+    return message
+
+
+def sendResponse(event=None):
+    # Get message from input field
+    message = inputMessage.get()
+    inputMessage.set("")
+
+    sendMessage(message)
+
+    msg_list.insert(tkinter.END, PREFIX + message)
+
+    # Scroll to the end of the list
+    # Change text color to blue
+    msg_list.yview(tkinter.END)
+    msg_list.itemconfig(tkinter.END, foreground="blue")
+
+
+def sendMessage(message):
+    message = message.encode(FORMAT)
+
+    messageLength = len(message)
+    send_len = str(messageLength).encode(FORMAT)
+    send_len += b" " * (BUFFERSIZE - len(send_len))
 
     client_socket.send(send_len)
     client_socket.send(message)
 
-    msg_list.insert(tkinter.END, PREFIX + msg)
-    msg_list.yview(tkinter.END) 
-    msg_list.itemconfig(tkinter.END, foreground="blue")
 
-
-def on_closing(event=None):
+def close(event=None):
     client_socket.close()
     top.quit()
 
@@ -50,36 +62,43 @@ top = tkinter.Tk()
 top.title("Pharmacy Chatbot")
 
 messages_frame = tkinter.Frame(top)
-my_msg = tkinter.StringVar()
-my_msg.set("")
+inputMessage = tkinter.StringVar()
+inputMessage.set("")
 scrollbar = tkinter.Scrollbar(messages_frame)
 
 msg_list = tkinter.Listbox(
-    messages_frame, height=15, width=100, yscrollcommand=scrollbar.set,font=font.Font(size=18)
+    messages_frame,
+    height=15,
+    width=100,
+    yscrollcommand=scrollbar.set,
+    font=font.Font(size=18),
 )
 scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
-msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH,padx=10,pady=10)
+msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH, padx=10, pady=10)
 msg_list.pack()
 messages_frame.pack()
 
-entry_field = tkinter.Entry(top, textvariable=my_msg,font=font.Font(size=14))
-entry_field.bind("<Return>", send)
-entry_field.pack(padx=10,pady=10)
-send_button = tkinter.Button(top, text="Send", command=send,font=font.Font(size=14))
-send_button.pack(padx=10,pady=10)
+entry_field = tkinter.Entry(top, textvariable=inputMessage, font=font.Font(size=14))
+entry_field.bind("<Return>", sendResponse)
+entry_field.pack(padx=10, pady=10)
+send_button = tkinter.Button(
+    top, text="Send", command=sendResponse, font=font.Font(size=14)
+)
+send_button.pack(padx=10, pady=10)
 
-top.protocol("WM_DELETE_WINDOW", on_closing)
+top.protocol("WM_DELETE_WINDOW", close)
 
-HOST = 'localhost'
+HOST = "localhost"
 PORT = 5050
-HEADER = 64
-PREFIX = "You: "
+BUFFERSIZE = 64
 FORMAT = "utf_8"
-ADDR = (HOST, PORT)
 
 client_socket = socket(AF_INET, SOCK_STREAM)
-client_socket.connect(ADDR)
+client_socket.connect((HOST, PORT))
 
-receive_thread = Thread(target=receive)
+PREFIX = "You: "
+
+# Handle the client request on a new thread to avoid blocking new requests
+receive_thread = Thread(target=receiveResponse)
 receive_thread.start()
 tkinter.mainloop()
