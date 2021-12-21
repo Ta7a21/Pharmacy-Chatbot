@@ -1,96 +1,34 @@
 import socket
 import threading
-  # to create multiple threads with one python program
 import mysql.connector
 
-mydb = mysql.connector.connect(host = "localhost",user = "root",password = "mysql", database = "Pharmacy")
+mydb = mysql.connector.connect(host="localhost", user="root", database="Pharmacy")
 mycursor = mydb.cursor()
 
 HEADER = 64
 PORT = 5050
-# server = "192.168.100.54"
-SERVER = socket.gethostbyname(
-    socket.gethostname()
-)  # for local network , for global network put global ip address
+SERVER = "localhost"
 ADDR = (SERVER, PORT)
 FORMAT = "utf_8"
-DISSCONECT_MSG = "close"
+DISSCONECT_MSG = "Close"
 PREFIX = "Pharmacy: "
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # AF :ip v4 sock_stream: TCP
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 
-def buyProcess(connection,request):
-    msg = receiveMessage(connection)
-    if request == "condition":
-        request = "Disease"
-        mycursor.execute( "select Name,Price from Medicines Where Disease = %s",(msg,))
-    if request == "product":
-        request = "Category"
-        mycursor.execute( "select Name,Price from Medicines Where Category = %s",(msg,))
-        
-    sendMessage(connection, PREFIX + "Please type the product name from the list below")
-    # Check database for products by symptom (msg)
 
-    prices = {}
-    products = mycursor.fetchall()
-    for item in products:
-        sendMessage(connection,item[0])
-        prices[item[0]] = item[1]  
-    
-    productName = receiveMessage(connection)
-    
-    # Check database for product
-    productPrice = prices[productName]
-    productAmount = 2
+def start():
+    server.listen()
+    print(f"[LISTENING] The Server Is Listening On: {SERVER}")
+    while True:
+        (
+            connection,
+            address,
+        ) = server.accept()
+        thread = threading.Thread(target=handleClient, args=(connection, address))
+        thread.start()
+        print(f"[ACTIVE CONNECTIONS: ]{threading.active_count() -1}")
 
-    sendMessage(connection, PREFIX + "Product's price is "+str(productPrice)+" LE. Would you like to buy it?")
-
-    msg = receiveMessage(connection)
-    if msg=="yes":
-        sendMessage(connection, PREFIX + "How many?")
-
-        msg = receiveMessage(connection)
-
-        sendMessage(connection, PREFIX + "Please type your phone number")
-
-        clientPhoneNumber = receiveMessage(connection)
-        mycursor.execute("select address from clients where phoneNumber = %s",(msg,))
-        clientAddress = mycursor.fetchone()
-        if not clientAddress: 
-        # If number not found in database
-            sendMessage(connection, PREFIX + "Please type your address")
-            clientAddress = receiveMessage(connection)
-            mycursor.execute("Insert into clients (phoneNumber,address) values (%s,%s)",(clientPhoneNumber,clientAddress))
-            mydb.commit()
-        else:
-            sendMessage(connection, PREFIX + "Your address is: " + clientAddress[0])
-
-        sendMessage(connection, PREFIX + "Thank you! Your order will arrive shortly!")
-
-    elif msg=="no":
-        sendMessage(connection, PREFIX + "We are sorry to see you go..")
-
-def receiveMessage(connection):
-    connection.settimeout(20.0)  # timeouts 20 sec
-    msg_length = connection.recv(HEADER).decode(
-        FORMAT
-    )  # wait untill sth is sent over the socket (we 'll determine how many bites we will accept)
-    connection.settimeout(None)
-    msg_length = int(msg_length)
-    msg = connection.recv(msg_length).decode(FORMAT)  # the actual msg
-
-    return msg
-
-def sendMessage(connection, message):
-    message = message.encode(FORMAT)
-
-    msg_len = len(message)
-    send_len = str(msg_len).encode(FORMAT)
-    send_len += b" " * (HEADER - len(send_len))
-
-    connection.send(send_len)
-    connection.send(message)
 
 def handleClient(connection, address):
     print(f"[Active Connection:] {address} connection")
@@ -105,56 +43,245 @@ def handleClient(connection, address):
     connected = True
     while connected:
         try:
-            msg = receiveMessage(connection)
-            if msg == DISSCONECT_MSG:
-                print(f"[DISCONNECTED] {address} has disconnected")
-                sendMessage(connection, "Thank you!")
-                connected = False
-                continue
-            if msg == 'product':
-                sendMessage(connection, PREFIX + "Please type the category name from the list below")
-                # Check database for categories
-                mycursor.execute("select Category from Medicines GROUP BY Category")
-                categories = mycursor.fetchall()
-                for item in categories:
-                    sendMessage(connection,item[0])
-
-                buyProcess(connection,msg)
-
-            if msg == 'condition':
-                sendMessage(connection, PREFIX + "Please type the condition name from the list below")
-                # Check database for conditions
-                mycursor.execute("select Disease from Medicines GROUP BY Disease")
-                conditions = mycursor.fetchall()
-                for item in conditions:
-                    if (item[0]):
-                        sendMessage(connection, item[0])
-
-                buyProcess(connection,msg)
-                
-            print(f"[{address}] {msg}")
+            session(connection)
         except socket.timeout as e:
             print("[TIME OUT] Timed out after 20 seconds")
-            connection.send("Connection Timed Out!".encode(FORMAT))
+            sendMessage(connection, "Connection Timed Out!")
             print(f"[DISCONNECTED] {address} has disconnected")
             connected = False
 
     connection.close()
 
 
-def start():  # it 'll start the socket server for us
-    server.listen()
-    print(f"[LISTENING] The Server Is Listening On: {SERVER}")
-    while True:
+def sendMessage(connection, message):
+    message = message.encode(FORMAT)
+
+    msg_len = len(message)
+    send_len = str(msg_len).encode(FORMAT)
+    send_len += b" " * (HEADER - len(send_len))
+
+    connection.send(send_len)
+    connection.send(message)
+
+
+def session(connection):
+    request = receiveMessage(connection)
+    if request == "Product":
+        categories = getCategories(connection)
+        printData(connection, categories)
+        status = purchaseProcess(connection)
+        if status:
+            finishTransaction(connection)
+        else:
+            sendMessage(connection, PREFIX + "We are sorry to see you go..")
+    elif request == "Condition":
+        diseases = getDiseases(connection)
+        printData(connection, diseases)
+        status = purchaseProcess(connection)
+        if status:
+            finishTransaction(connection)
+        else:
+            sendMessage(connection, PREFIX + "We are sorry to see you go..")
+    else:
+        sendMessage(connection, PREFIX + "You can type (product) or (condition) only!")
+
+
+def receiveMessage(connection):
+    connection.settimeout(20.0)
+    msg_length = connection.recv(HEADER).decode(FORMAT)
+    connection.settimeout(None)
+    msg_length = int(msg_length)
+    msg = connection.recv(msg_length).decode(FORMAT)
+
+    return msg.title()
+
+
+def getCategories(connection):
+    sendMessage(
+        connection, PREFIX + "Please type the category name from the list below"
+    )
+    mycursor.execute("SELECT Category FROM Medicines GROUP BY Category")
+    return mycursor.fetchall()
+
+
+def getDiseases(connection):
+    sendMessage(
+        connection, PREFIX + "Please type the condition name from the list below"
+    )
+    mycursor.execute("SELECT Disease FROM Medicines GROUP BY Disease")
+    return mycursor.fetchall()
+
+
+def printData(connection, data):
+    for item in data:
+        if item[0]=="":
+            continue
+        sendMessage(connection, item[0])
+
+
+def purchaseProcess(connection):
+    productName, productAmount = getProductData(connection)
+    return confirmPurchase(connection, productName, productAmount)
+
+
+def getProductData(connection):
+    prices, amounts = getProductsData(connection)
+
+    productName = getProductName(connection, prices)
+
+    productPrice = prices[productName]
+    productAmount = amounts[productName]
+
+    sendMessage(
+        connection,
+        PREFIX
+        + "Product's price is "
+        + str(productPrice)
+        + " LE. Would you like to buy it? (Yes/No)",
+    )
+    return productName, productAmount
+
+
+def getProductsData(connection):
+    products = []
+    while len(products) == 0:
+        type = receiveMessage(connection)
+        mycursor.execute(
+            "SELECT Name,Price,Amount FROM Medicines WHERE (Disease = %s OR Category = %s) AND Amount>0",
+            (type, type),
+        )
+        products = mycursor.fetchall()
+        if len(products) == 0:
+            sendMessage(connection, PREFIX + "No results found!")
+            sendMessage(connection, "Please select one of the items above")
+
+    sendMessage(connection, PREFIX + "Please type the product name from the list below")
+
+    prices = {}
+    amounts = {}
+
+    for item in products:
+        sendMessage(connection, item[0])
+        prices[item[0]] = item[1]
+        amounts[item[0]] = item[2]
+
+    return prices, amounts
+
+
+def getProductName(connection, data):
+    productName = receiveMessage(connection)
+    while productName not in data.keys():
+        sendMessage(connection, PREFIX + "No results found!")
+        sendMessage(connection, "Please select one of the items above")
+        productName = receiveMessage(connection)
+
+    return productName
+
+
+def confirmPurchase(connection, productName, productAmount):
+    response = receiveMessage(connection)
+    if response == "Yes":
+        getAmount(connection, productName, productAmount)
+        sendMessage(
+            connection, PREFIX + "Would you like to have another order? (Yes/No)"
+        )
+        response = receiveMessage(connection)
+        if response == "Yes":
+            categories = getCategories(connection)
+            printData(connection, categories)
+            purchaseProcess(connection)
+        return True
+    elif response == "No":
+        return False
+    else:
+        sendMessage(connection, PREFIX + "Please choose (Yes) or (No)")
+        confirmPurchase(connection, productName, productAmount)
+
+
+def getAmount(connection, productName, productAmount):
+    sendMessage(connection, PREFIX + "How many?")
+
+    amount = receiveMessage(connection)
+    while not amount.isnumeric() or int(amount) <= 0:
+        sendMessage(connection, PREFIX + "Please enter a valid amount!")
+        amount = receiveMessage(connection)
+
+    newAmount = productAmount - int(amount)
+    if int(amount) > productAmount:
+        sendMessage(
+            connection, PREFIX + "Only " + str(productAmount) + " left in stock.."
+        )
+        newAmount = 0
+
+    mycursor.execute(
+        "UPDATE medicines SET Amount = %s WHERE Name = %s",
         (
-            connection,
-            address,
-        ) = (
-            server.accept()
-        )  # we 'll wait until a new connection occurs and save which address it came from and the acual object
-        thread = threading.Thread(target=handleClient, args=(connection, address))
-        thread.start()
-        print(f"[ACTIVE CONNECTIONS: ]{threading.active_count() -1}")
+            str(newAmount),
+            productName,
+        ),
+    )
+    mydb.commit()
+
+
+def finishTransaction(connection):
+    clientPhoneNumber = getPhoneNumber(connection)
+    handleAddress(connection, clientPhoneNumber)
+    sendMessage(connection, PREFIX + "Thank you! Your order will arrive shortly!")
+
+
+def getPhoneNumber(connection):
+    sendMessage(connection, PREFIX + "Please type your phone number")
+
+    clientPhoneNumber = receiveMessage(connection)
+    while not clientPhoneNumber.isnumeric():
+        sendMessage(connection, PREFIX + "Please enter a valid phone number!")
+        clientPhoneNumber = receiveMessage(connection)
+
+    return clientPhoneNumber
+
+
+def handleAddress(connection, clientPhoneNumber):
+    mycursor.execute(
+        "SELECT address FROM clients WHERE phoneNumber = %s", (clientPhoneNumber,)
+    )
+    clientAddress = mycursor.fetchone()
+    if not clientAddress:
+        insertAddress(connection, clientPhoneNumber)
+    else:
+        sendMessage(connection, PREFIX + "Your address is: " + clientAddress[0])
+        sendMessage(connection, "Would you like to update your address? (Yes/No)")
+        updateAddress(connection, clientPhoneNumber)
+
+
+def insertAddress(connection, clientPhoneNumber):
+    sendMessage(connection, PREFIX + "Please type your address")
+    clientAddress = receiveMessage(connection)
+    mycursor.execute(
+        "INSERT INTO clients (phoneNumber,address) VALUES (%s,%s)",
+        (clientPhoneNumber, clientAddress),
+    )
+    mydb.commit()
+
+
+def updateAddress(connection, clientPhoneNumber):
+    response = receiveMessage(connection)
+
+    if response == "Yes":
+        sendMessage(connection, PREFIX + "Please type your address")
+        clientAddress = receiveMessage(connection)
+        mycursor.execute(
+            "UPDATE clients SET address = %s WHERE phoneNumber = %s",
+            (
+                clientAddress,
+                clientPhoneNumber,
+            ),
+        )
+        mydb.commit()
+    elif response == "No":
+        return
+    else:
+        sendMessage(connection, PREFIX + "Please choose (Yes) or (No)")
+        updateAddress(connection, clientPhoneNumber)
 
 
 print("[STARTING] the server is starting ...")

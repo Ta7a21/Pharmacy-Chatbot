@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Dec 21, 2021 at 12:03 AM
+-- Generation Time: Dec 21, 2021 at 12:27 AM
 -- Server version: 8.0.18
 -- PHP Version: 7.3.11
 
@@ -21,6 +21,8 @@ SET time_zone = "+00:00";
 --
 -- Database: `pharmacy`
 --
+CREATE DATABASE IF NOT EXISTS `pharmacy` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `pharmacy`;
 
 -- --------------------------------------------------------
 

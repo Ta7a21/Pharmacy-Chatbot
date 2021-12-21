@@ -1,4 +1,4 @@
-from socket import AF_INET, socket, SOCK_STREAM
+from socket import AF_INET,socket, SOCK_STREAM
 from threading import Thread
 import tkinter
 
@@ -8,15 +8,15 @@ def receive():
         try:
             msg_length = client_socket.recv(HEADER).decode(
                 FORMAT
-            )  # wait untill sth is sent over the socket (we 'll determine how many bites we will accept)
+            )
             client_socket.settimeout(None)
             if msg_length:
                 msg_length = int(msg_length)
                 msg = client_socket.recv(msg_length).decode(FORMAT)
-            # msg = client_socket.recv(4096).decode(FORMAT)
             
                 msg_list.insert(tkinter.END, msg)
-                if msg == "Connection Timed Out!" or msg == "Thank you!":
+                msg_list.yview(tkinter.END) 
+                if msg == "Connection Timed Out!":
                     client_socket.close()
                     top.quit()
         except OSError:
@@ -36,6 +36,7 @@ def send(event=None):
     client_socket.send(message)
 
     msg_list.insert(tkinter.END, PREFIX + msg)
+    msg_list.yview(tkinter.END) 
 
 
 def on_closing(event=None):
@@ -67,10 +68,10 @@ send_button.pack()
 
 top.protocol("WM_DELETE_WINDOW", on_closing)
 
-HOST = "192.168.1.104"
+HOST = 'localhost'
 PORT = 5050
 HEADER = 64
-PREFIX = "User: "
+PREFIX = "You: "
 FORMAT = "utf_8"
 ADDR = (HOST, PORT)
 
