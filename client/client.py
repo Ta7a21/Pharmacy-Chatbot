@@ -67,7 +67,7 @@ send_button.pack()
 
 top.protocol("WM_DELETE_WINDOW", on_closing)
 
-HOST = "192.168.0.105"
+HOST = "192.168.1.104"
 PORT = 5050
 HEADER = 64
 PREFIX = "User: "

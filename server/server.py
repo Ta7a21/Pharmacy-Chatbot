@@ -1,6 +1,10 @@
 import socket
 import threading
   # to create multiple threads with one python program
+import mysql.connector
+
+mydb = mysql.connector.connect(host = "localhost",user = "root",password = "mysql", database = "Pharmacy")
+mycursor = mydb.cursor()
 
 HEADER = 64
 PORT = 5050
@@ -16,19 +20,28 @@ PREFIX = "Pharmacy: "
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # AF :ip v4 sock_stream: TCP
 server.bind(ADDR)
 
-def buyProcess(connection):
+def buyProcess(connection,request):
     msg = receiveMessage(connection)
-    
+    if request == "condition":
+        request = "Disease"
+        mycursor.execute( "select Name,Price from Medicines Where Disease = %s",(msg,))
+    if request == "product":
+        request = "Category"
+        mycursor.execute( "select Name,Price from Medicines Where Category = %s",(msg,))
+        
     sendMessage(connection, PREFIX + "Please type the product name from the list below")
     # Check database for products by symptom (msg)
-    products = ['brufen','panadol','cataflam']
+
+    prices = {}
+    products = mycursor.fetchall()
     for item in products:
-        sendMessage(connection,item)
+        sendMessage(connection,item[0])
+        prices[item[0]] = item[1]  
     
-    msg = receiveMessage(connection)
+    productName = receiveMessage(connection)
     
     # Check database for product
-    productPrice = 12
+    productPrice = prices[productName]
     productAmount = 2
 
     sendMessage(connection, PREFIX + "Product's price is "+str(productPrice)+" LE. Would you like to buy it?")
@@ -41,12 +54,17 @@ def buyProcess(connection):
 
         sendMessage(connection, PREFIX + "Please type your phone number")
 
-        msg = receiveMessage(connection)
-
+        clientPhoneNumber = receiveMessage(connection)
+        mycursor.execute("select address from clients where phoneNumber = %s",(msg,))
+        clientAddress = mycursor.fetchone()
+        if not clientAddress: 
         # If number not found in database
-        sendMessage(connection, PREFIX + "Please type your address")
-
-        msg = receiveMessage(connection)
+            sendMessage(connection, PREFIX + "Please type your address")
+            clientAddress = receiveMessage(connection)
+            mycursor.execute("Insert into clients (phoneNumber,address) values (%s,%s)",(clientPhoneNumber,clientAddress))
+            mydb.commit()
+        else:
+            sendMessage(connection, PREFIX + "Your address is: " + clientAddress[0])
 
         sendMessage(connection, PREFIX + "Thank you! Your order will arrive shortly!")
 
@@ -96,20 +114,23 @@ def handleClient(connection, address):
             if msg == 'product':
                 sendMessage(connection, PREFIX + "Please type the category name from the list below")
                 # Check database for categories
-                categories = ['skin care','hair care','medicine']
+                mycursor.execute("select Category from Medicines GROUP BY Category")
+                categories = mycursor.fetchall()
                 for item in categories:
-                    sendMessage(connection,item)
+                    sendMessage(connection,item[0])
 
-                buyProcess(connection)
+                buyProcess(connection,msg)
 
             if msg == 'condition':
                 sendMessage(connection, PREFIX + "Please type the condition name from the list below")
                 # Check database for conditions
-                conditions = ['swelling','fever','coughing']
+                mycursor.execute("select Disease from Medicines GROUP BY Disease")
+                conditions = mycursor.fetchall()
                 for item in conditions:
-                    sendMessage(connection, item)
+                    if (item[0]):
+                        sendMessage(connection, item[0])
 
-                buyProcess(connection)
+                buyProcess(connection,msg)
                 
             print(f"[{address}] {msg}")
         except socket.timeout as e:
