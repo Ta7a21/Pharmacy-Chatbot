@@ -1,8 +1,9 @@
 import socket
 import threading
 import mysql.connector
+import time
 
-mydb = mysql.connector.connect(host="localhost", user="root", database="Pharmacy")
+mydb = mysql.connector.connect(host="localhost", user="root", database="pharmacy")
 mycursor = mydb.cursor()
 
 HEADER = 64
@@ -15,7 +16,6 @@ PREFIX = "Pharmacy: "
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
-
 
 def start():
     server.listen()
@@ -46,9 +46,16 @@ def handleClient(connection, address):
             session(connection)
         except socket.timeout as e:
             print("[TIME OUT] Timed out after 20 seconds")
-            sendMessage(connection, "Connection Timed Out!")
-            print(f"[DISCONNECTED] {address} has disconnected")
-            connected = False
+            sendMessage(connection, "Time Out! type (Restart) if you want to reconnect" )
+            try:
+                request = receiveMessage(connection)
+                if request == "Restart":
+                    handleClient(connection,address)
+            except:
+                time.sleep(10)
+                sendMessage(connection, "Connection Timed Out!")
+                print(f"[DISCONNECTED] {address} has disconnected")
+                connected = False
 
     connection.close()
 
