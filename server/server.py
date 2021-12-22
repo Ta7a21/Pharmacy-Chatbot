@@ -6,7 +6,8 @@ import time
 
 
 # Connecting to database server
-mydb = mysql.connector.connect(host="localhost", user="root", database="pharmacy")
+mydb = mysql.connector.connect(
+    host="localhost", user="root", password="mysql", database="pharmacy")
 mycursor = mydb.cursor()
 
 BUFFERSIZE = 64
@@ -22,6 +23,8 @@ server = socket(AF_INET, SOCK_STREAM)
 server.bind((SERVER, PORT))
 
 # Start listening to requests
+
+
 def start():
     server.listen()
     print(f"[LISTENING] The Server Is Listening On: {SERVER}")
@@ -43,7 +46,8 @@ def handleClient(connection):
     sendMessage(connection, PREFIX + "Welcome to our chatbot!")
     sendMessage(connection, "How can we help you?")
     sendMessage(connection, "A specific product? Type (product)")
-    sendMessage(connection, "A medicine for a specific condition? Type (condition)")
+    sendMessage(
+        connection, "A medicine for a specific condition? Type (condition)")
 
     # Stay connected until the connection times out
     connected = True
@@ -52,7 +56,8 @@ def handleClient(connection):
             session(connection)
         except timeout:
             print("[TIME OUT] Timed out after 20 seconds")
-            sendMessage(connection, "Time Out! Type (restart) if you want to reconnect")
+            sendMessage(
+                connection, "Time Out! Type (restart) if you want to reconnect")
             try:
                 request = receiveMessage(connection)
                 if request == "Restart":
@@ -90,7 +95,8 @@ def session(connection):
         sendData(connection, diseases)
         purchase(connection)
     else:
-        sendMessage(connection, PREFIX + "You can type (product) or (condition) only!")
+        sendMessage(connection, PREFIX +
+                    "You can type (product) or (condition) only!")
 
 
 def receiveMessage(connection):
@@ -105,15 +111,18 @@ def receiveMessage(connection):
     # Use title method to unify strings case
     return message.title()
 
+
 def decryptMessage(encrypted_message):
     key = loadKey()
     f = Fernet(key)
     decryptedMessage = f.decrypt(encrypted_message).decode(FORMAT)
-    
+
     return decryptedMessage
+
 
 def loadKey():
     return open("key/secret.key", "rb").read()
+
 
 def getCategories(connection):
     sendMessage(
@@ -186,7 +195,8 @@ def getProductsData(connection):
             sendMessage(connection, PREFIX + "No results found!")
             sendMessage(connection, "Please select one of the items above")
 
-    sendMessage(connection, PREFIX + "Please type the product name from the list below")
+    sendMessage(connection, PREFIX +
+                "Please type the product name from the list below")
 
     prices = {}
     amounts = {}
@@ -216,7 +226,8 @@ def confirmPurchase(connection, productName, productQuantity):
     if response == "Yes":
         getQuantity(connection, productName, productQuantity)
         sendMessage(
-            connection, PREFIX + "Would you like to have another order? (Yes/No)"
+            connection, PREFIX +
+            "Would you like to have another order? (Yes/No)"
         )
         response = receiveMessage(connection)
         if response == "Yes":
@@ -238,14 +249,16 @@ def getQuantity(connection, productName, productQuantity):
 
     # Check if input is an integer bigger than zero
     while not requiredQuantity.isnumeric() or int(requiredQuantity) <= 0:
-        sendMessage(connection, PREFIX + "Please enter a valid requiredQuantity!")
+        sendMessage(connection, PREFIX +
+                    "Please enter a valid requiredQuantity!")
         requiredQuantity = receiveMessage(connection)
 
     # Check if required quantity is available in stock
     newQuantity = productQuantity - int(requiredQuantity)
     if newQuantity < 0:
         sendMessage(
-            connection, PREFIX + "Only " + str(productQuantity) + " left in stock.."
+            connection, PREFIX + "Only " +
+            str(productQuantity) + " left in stock.."
         )
         newQuantity = 0
 
@@ -262,7 +275,8 @@ def getQuantity(connection, productName, productQuantity):
 def getClientInfo(connection):
     clientPhoneNumber = getPhoneNumber(connection)
     handleAddress(connection, clientPhoneNumber)
-    sendMessage(connection, PREFIX + "Thank you! Your order will arrive shortly!")
+    sendMessage(connection, PREFIX +
+                "Thank you! Your order will arrive shortly!")
 
 
 def getPhoneNumber(connection):
@@ -275,16 +289,20 @@ def getPhoneNumber(connection):
 
     return clientPhoneNumber
 
+
 def handleAddress(connection, clientPhoneNumber):
     mycursor.execute(
-        "SELECT address FROM clients WHERE phoneNumber = %s", (clientPhoneNumber,)
+        "SELECT address FROM clients WHERE phoneNumber = %s", (
+            clientPhoneNumber,)
     )
     clientAddress = mycursor.fetchone()
     if clientAddress is None:
         insertAddress(connection, clientPhoneNumber)
     else:
-        sendMessage(connection, PREFIX + "Your address is: " + clientAddress[0])
-        sendMessage(connection, "Would you like to update your address? (Yes/No)")
+        sendMessage(connection, PREFIX +
+                    "Your address is: " + clientAddress[0])
+        sendMessage(
+            connection, "Would you like to update your address? (Yes/No)")
         updateAddress(connection, clientPhoneNumber)
 
 
