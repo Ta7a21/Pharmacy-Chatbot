@@ -14,7 +14,7 @@ def receiveResponse():
 
             # Scroll to the end of the list
             msg_list.yview(tkinter.END)
-            if message == "Connection Timed Out!":
+            if message == "Close":
                 close()
         except OSError:
             break

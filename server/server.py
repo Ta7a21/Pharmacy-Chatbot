@@ -4,10 +4,16 @@ import threading
 import mysql.connector
 import time
 
+# Connecting to database server, we have two cases
+# as AMPPS and XAMPP require different configurations
+mydb = mysql.connector
+try:
+    mydb = mydb.connect(
+        host="localhost", user="root",password="mysql",  database="pharmacy") 
+except:
+    mydb = mydb.connect(
+        host="localhost", user="root", database="pharmacy") 
 
-# Connecting to database server
-mydb = mysql.connector.connect(
-    host="localhost", user="root", password="mysql", database="pharmacy")
 mycursor = mydb.cursor()
 
 BUFFERSIZE = 64
@@ -27,7 +33,7 @@ server.bind((SERVER, PORT))
 
 def start():
     server.listen()
-    print(f"[LISTENING] The Server Is Listening On: {SERVER}")
+    print(f"[LISTENING] The server is listening on: {SERVER}")
     while True:
         # Save the socket's object connecting to the server
         connection, _ = server.accept()
@@ -65,12 +71,10 @@ def handleClient(connection):
                 else:
                     raise Exception("Invalid input")
             except:
-                time.sleep(10)
-                sendMessage(connection, "Connection Timed Out!")
-                print(f"[DISCONNECTED] Client has disconnected")
+                closeConnection(connection,5)
                 connected = False
-
-    connection.close()
+        except:
+            connected = False
 
 
 def sendMessage(connection, message):
@@ -155,6 +159,7 @@ def purchase(connection):
         getClientInfo(connection)
     else:
         sendMessage(connection, PREFIX + "We are sorry to see you go..")
+    closeConnection(connection,2)
 
 
 def chooseProduct(connection):
@@ -337,6 +342,11 @@ def updateAddress(connection, clientPhoneNumber):
         sendMessage(connection, PREFIX + "Please choose (Yes) or (No)")
         updateAddress(connection, clientPhoneNumber)
 
+def closeConnection(connection,timeInSeconds):
+    time.sleep(timeInSeconds)
+    sendMessage(connection, "Close")
+    print(f"[DISCONNECTED] Client has disconnected")
+    connection.close()
 
 print("[STARTING] the server is starting ...")
 start()
