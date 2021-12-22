@@ -53,6 +53,7 @@ def sendMessage(message):
     client_socket.send(send_len)
     client_socket.send(message)
 
+
 def encryptMessage(message):
     key = loadKey()
     message = message.encode(FORMAT)
@@ -61,8 +62,10 @@ def encryptMessage(message):
 
     return encryptedMessage
 
+
 def loadKey():
     return open("key/secret.key", "rb").read()
+
 
 def close(event=None):
     client_socket.close()
